@@ -1,17 +1,41 @@
 <script setup>
+import { watch, ref } from 'vue'
+import { isNumeric } from '@/shared'
 import CurrencyDropdown from '@/components/CurrencyDropdown.vue'
 
-const value = defineModel('value')
-const props = defineProps(['currency'])
-const emit = defineEmits(['update:currency'])
+const props = defineProps(['value', 'currency'])
+const emit = defineEmits(['update:value', 'update:currency'])
+const error = ref(null)
+
+watch(
+  () => props.value,
+  (val) => {
+    if (error.value && isNumeric(val)) {
+      error.value = null
+    }
+  },
+)
+
+function verify(value) {
+  error.value = null
+  if (value.includes(',')) {
+    value = value.replaceAll(',', '.')
+  }
+  if (!isNumeric(value)) {
+    error.value = 'Неправильное число!'
+  }
+
+  emit('update:value', value)
+}
 </script>
 
 <template>
   <div class="currency-input">
-    <input v-model="value" type="number" @input="emit('update:value', $event.target.value)" />
+    <input :value="props.value" @input="verify($event.target.value)" />
     <div class="delimiter"></div>
     <CurrencyDropdown :currency="props.currency" @change="emit('update:currency', $event)" />
   </div>
+  <p class="error">{{ error }}</p>
 </template>
 
 <style lang="scss" scoped>
@@ -38,5 +62,8 @@ $border-color: #dadce0;
     height: 1em;
     background-color: $border-color;
   }
+}
+.error {
+  color: red;
 }
 </style>

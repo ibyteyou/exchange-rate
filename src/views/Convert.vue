@@ -2,7 +2,7 @@
 import { watch, ref, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCurrencyStore } from '@/stores/currency'
-import { round, currenciesList } from '@/shared'
+import { round, isNumeric, currenciesList } from '@/shared'
 import CurrencyInput from '@/components/CurrencyInput.vue'
 
 const currencyStore = useCurrencyStore()
@@ -15,12 +15,16 @@ const values = ref({
   from: 1,
   to: 0,
 })
-function convert(order) {
+function convert(value, order) {
   const invertOrder = order === 'from' ? 'to' : 'from'
-  const value = values.value[order]
   const convertTo = currency.value[`${currencies.value[order]}-${currencies.value[invertOrder]}`]
-  const result = value * convertTo
-  values.value[invertOrder] = round(result)
+  const result = round(value * convertTo)
+
+  values.value[order] = value
+
+  if (isNumeric(result)) {
+    values.value[invertOrder] = result
+  }
 }
 function changeCur(newCur, order) {
   const invertOrder = order === 'from' ? 'to' : 'from'
@@ -31,14 +35,14 @@ function changeCur(newCur, order) {
   }
   currencies.value[order] = newCur
 
-  convert(order)
+  convert(values.value[invertOrder], order)
 }
 
 onMounted(() => {
   if (loaded.value) {
-    convert('from')
+    convert(values.value.from, 'from')
   } else {
-    watch(loaded, () => convert('from'), { post: true, once: true })
+    watch(loaded, () => convert(values.value.from, 'from'), { once: true })
   }
 })
 </script>
@@ -46,16 +50,16 @@ onMounted(() => {
 <template>
   <div v-if="loaded">
     <currency-input
-      v-model:value="values.from"
+      :value="values.from"
       :currency="currencies.from"
-      @update:value="convert('from')"
+      @update:value="convert($event, 'from')"
       @update:currency="changeCur($event, 'from')"
     />
     <br />
     <currency-input
-      v-model:value="values.to"
+      :value="values.to"
       :currency="currencies.to"
-      @update:value="convert('to')"
+      @update:value="convert($event, 'to')"
       @update:currency="changeCur($event, 'to')"
     />
   </div>
